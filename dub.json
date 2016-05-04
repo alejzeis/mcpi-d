@@ -1,0 +1,11 @@
+{
+	"name": "mcpi-d",
+	"description": "A Minecraft: PI edition server written in D.",
+	"authors": ["jython234"],
+	"homepage": "https://github.com/jython234/mcpi-d",
+	"license": "MIT",
+	"targetPath": "bin",
+	"dependencies": {
+	    "draklib" : "~>1.0.1"
+	}
+}
