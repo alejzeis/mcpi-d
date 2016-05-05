@@ -6,6 +6,10 @@ import std.conv;
 import std.stdio;
 import std.datetime;
 
+string getIdent(in string ip, in ushort port) {
+	return ip ~ ":" ~ to!string(port);
+}
+
 class LoggerImpl : Logger {
 	private const string name;
 
@@ -15,7 +19,7 @@ class LoggerImpl : Logger {
 
 	override {
 		const void logDebug(in string message) {
-			writeln("[" ~ getTime() ~ "] [" ~ name ~ "/DEBUG]: " ~ message);
+			debug writeln("[" ~ getTime() ~ "] [" ~ name ~ "/DEBUG]: " ~ message);
 		}
 		
 		const void logInfo(in string message) {

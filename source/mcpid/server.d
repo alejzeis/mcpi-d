@@ -20,6 +20,8 @@ immutable string SOFTWARE_VERSION = "1.0.0-alpha";
 immutable string MCPI_VERSION = "0.1.1";
 immutable uint MCPI_PROTOCOL = 14;
 
+package class PlayersLock { }
+
 class MinecraftPiServer {
 	private shared string bindIp;
 	private shared ushort bindPort;
@@ -28,6 +30,7 @@ class MinecraftPiServer {
 	private const Logger logger;
 
 	private shared Player[string] players;
+	private shared PlayersLock playerLock;
 
 	private Tid rakTid;
 
@@ -37,8 +40,11 @@ class MinecraftPiServer {
 
 		logger = new LoggerImpl("MCPI-d");
 
+		playerLock = cast(shared) new PlayersLock();
+
 		shared ServerOptions options = ServerOptions();
-		options.serverIdent = "MCCPP;MINECON;A mcpi-d server!";
+		//options.serverIdent = "MCCPP;MINECON;A mcpi-d server!";
+		options.serverIdent = "MCPE;A mcpi-d server!;" ~ to!string(MCPI_PROTOCOL) ~ ";" ~ MCPI_VERSION ~ "0;0";
 
 		rakTid = spawn(&startRakServer, cast(shared) new LoggerImpl("DRakLib"), bindIp, bindPort, options);
 		logger.logDebug("Started DRakLib thread");
@@ -87,7 +93,39 @@ class MinecraftPiServer {
 	}
 
 	private void doTick() {
+		receiveTimeout(dur!("msecs")(1), &this.handleSessionOpen, &this.handleSessionClose, &this.handleSessionPacket);
+	}
 
+	private void handleSessionOpen(SessionOpenMessage m) {
+		synchronized (playerLock) {
+			string ident = getIdent(m.ip, m.port);
+
+			if(ident in players) return;
+
+			logger.logDebug("Session opened from: " ~ ident);
+			players[ident] = cast(shared) new Player(cast(shared) this, m.ip, m.port);
+		}
+
+	}
+
+	private void handleSessionClose(SessionCloseMessage m) {
+		string ident = getIdent(m.ip, m.port);
+		logger.logDebug("Session closed from: " ~ ident);
+		synchronized (playerLock) {
+			if(!(ident in players)) return;
+
+			players[ident].close(m.reason, true);
+			players.remove(ident);
+		}
+	}
+
+	private void handleSessionPacket(SessionReceivePacketMessage m) {
+		string ident = getIdent(m.ip, m.port);
+		synchronized(playerLock) {
+			if(ident in players) {
+				players[ident].handlePacket(cast(byte[]) m.payload);
+			}
+		}
 	}
 
 	private void shutdownNetwork() {
@@ -103,8 +141,16 @@ class MinecraftPiServer {
 		if(!stopped) logger.logWarn("Could not stop RakNet server, continuing shutdown...");
 	}
 
-	bool hasCrashed() {
+	shared bool hasCrashed() {
+		return crashed;
+	}
+
+	bool hasCrashed_noShare() {
 		return cast(bool) crashed;
+	}
+
+	shared Logger getLogger() {
+		return cast(Logger) logger;
 	}
 }
 
