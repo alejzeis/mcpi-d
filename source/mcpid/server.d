@@ -2,6 +2,7 @@
 
 import draklib.util : InvalidOperationException;
 import draklib.logging;
+import draklib.protocol.reliability : Reliability;
 import draklib.server.raknetserver;
 import draklib.server.serverinterface;
 
@@ -37,7 +38,7 @@ class MinecraftPiServer {
 	private shared Task[uint] tasks;
 	private shared Lock tasksLock;
 
-	private Tid rakTid;
+	private shared Tid rakTid;
 
 	package uint nextEntityId = 0;
 
@@ -54,7 +55,7 @@ class MinecraftPiServer {
 		options.serverIdent = "MCCPP;MINECON;A mcpi-d server!";
 		//options.serverIdent = "MCPE;A mcpi-d server!;" ~ to!string(MCPI_PROTOCOL) ~ ";" ~ MCPI_VERSION ~ "0;0";
 
-		rakTid = spawn(&startRakServer, cast(shared) new LoggerImpl("DRakLib"), bindIp, bindPort, options);
+		rakTid = cast(shared) spawn(&startRakServer, cast(shared) new LoggerImpl("DRakLib"), bindIp, bindPort, options);
 		logger.logDebug("Started DRakLib thread");
 	}
 
@@ -72,10 +73,9 @@ class MinecraftPiServer {
 	private void run() {
 		logger.logInfo("Starting " ~ SOFTWARE ~ " " ~ SOFTWARE_VERSION ~ " implementing MCPI " ~ MCPI_VERSION ~ " (protocol: " ~ to!string(MCPI_PROTOCOL) ~ ")");
 
-		registerRepeatingTask(() {
+		(cast(shared) this).registerRepeatingTask(() {
 				receiveTimeout(dur!("msecs")(1), &this.handleSessionOpen, &this.handleSessionClose, &this.handleSessionPacket);
 			}, 1);
-
 		StopWatch sw = StopWatch();
 		while(running) {
 			sw.reset();
@@ -122,18 +122,22 @@ class MinecraftPiServer {
 		}
 	}
 
-	void registerTask(void delegate() func, ulong runIn) {
+	shared void registerTask(void delegate() func, ulong runIn) {
 		synchronized(tasksLock) {
 			uint id = nextTaskId++;
 			tasks[id] = Task(func, currentTick - runIn, runIn, id, false);
 		}
 	}
 
-	void registerRepeatingTask(void delegate() func, ulong interval) {
+	shared void registerRepeatingTask(void delegate() func, ulong interval) {
 		synchronized(tasksLock) {
 			uint id = nextTaskId++;
 			tasks[id] = Task(func, currentTick, interval, id, true);
 		}
+	}
+
+	package shared void sendPacket(shared string ip, shared ushort port, shared byte[] data, shared bool immediate = false, shared ubyte reliability = Reliability.RELIABLE) {
+		send(cast(Tid) rakTid, SendPacketMessage(ip, port, immediate, reliability, data));
 	}
 
 	private void handleSessionOpen(SessionOpenMessage m) {
@@ -171,7 +175,7 @@ class MinecraftPiServer {
 	private void shutdownNetwork() {
 		//TODO: Kick players
 		logger.logInfo("Stopping RakNet Server...");
-		send(rakTid, StopServerMessage()); //Stop DRakLib
+		send(cast(Tid) rakTid, StopServerMessage()); //Stop DRakLib
 
 		bool stopped = false;
 		receiveTimeout(dur!("seconds")(5), (ServerStoppedMessage m) {

@@ -6,6 +6,7 @@
 	"license": "MIT",
 	"targetPath": "bin",
 	"dependencies": {
-	    "draklib" : "~>1.0.2"
+	    "draklib" : "~>1.0.2",
+		"cerealed": "~>0.6.4"
 	}
 }
