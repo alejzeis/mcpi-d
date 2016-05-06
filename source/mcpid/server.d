@@ -20,7 +20,7 @@ immutable string SOFTWARE_VERSION = "1.0.0-alpha";
 immutable string MCPI_VERSION = "0.1.1";
 immutable uint MCPI_PROTOCOL = 9;
 
-package class PlayersLock { }
+package class Lock { }
 
 class MinecraftPiServer {
 	private shared string bindIp;
@@ -30,9 +30,16 @@ class MinecraftPiServer {
 	private const Logger logger;
 
 	private shared Player[string] players;
-	private shared PlayersLock playerLock;
+	private shared Lock playerLock;
+
+	private shared ulong currentTick = 0;
+	private shared uint nextTaskId = 0;
+	private shared Task[uint] tasks;
+	private shared Lock tasksLock;
 
 	private Tid rakTid;
+
+	package uint nextEntityId = 0;
 
 	this(shared string bindIp, shared ushort bindPort) {
 		this.bindIp = bindIp;
@@ -40,7 +47,8 @@ class MinecraftPiServer {
 
 		logger = new LoggerImpl("MCPI-d");
 
-		playerLock = cast(shared) new PlayersLock();
+		playerLock = cast(shared) new Lock();
+		tasksLock = cast(shared) new Lock();
 
 		shared ServerOptions options = ServerOptions();
 		options.serverIdent = "MCCPP;MINECON;A mcpi-d server!";
@@ -63,6 +71,10 @@ class MinecraftPiServer {
 
 	private void run() {
 		logger.logInfo("Starting " ~ SOFTWARE ~ " " ~ SOFTWARE_VERSION ~ " implementing MCPI " ~ MCPI_VERSION ~ " (protocol: " ~ to!string(MCPI_PROTOCOL) ~ ")");
+
+		registerRepeatingTask(() {
+				receiveTimeout(dur!("msecs")(1), &this.handleSessionOpen, &this.handleSessionClose, &this.handleSessionPacket);
+			}, 1);
 
 		StopWatch sw = StopWatch();
 		while(running) {
@@ -93,7 +105,35 @@ class MinecraftPiServer {
 	}
 
 	private void doTick() {
-		receiveTimeout(dur!("msecs")(1), &this.handleSessionOpen, &this.handleSessionClose, &this.handleSessionPacket);
+		currentTick++;
+		synchronized(tasksLock) {
+			int[] toRemove;
+			foreach(ref task; tasks) {
+				if(task.lastRan + task.delay >= currentTick) {
+					task.method();
+					if(!task.repeat) {
+						toRemove ~= task.taskId;
+						continue;
+					}
+					task.lastRan = currentTick;
+				}
+			}
+			foreach(id; toRemove) tasks.remove(id);
+		}
+	}
+
+	void registerTask(void delegate() func, ulong runIn) {
+		synchronized(tasksLock) {
+			uint id = nextTaskId++;
+			tasks[id] = Task(func, currentTick - runIn, runIn, id, false);
+		}
+	}
+
+	void registerRepeatingTask(void delegate() func, ulong interval) {
+		synchronized(tasksLock) {
+			uint id = nextTaskId++;
+			tasks[id] = Task(func, currentTick, interval, id, true);
+		}
 	}
 
 	private void handleSessionOpen(SessionOpenMessage m) {

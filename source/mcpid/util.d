@@ -10,6 +10,14 @@ string getIdent(in string ip, in ushort port) {
 	return ip ~ ":" ~ to!string(port);
 }
 
+struct Task {
+	shared void delegate() method;
+	shared ulong lastRan;
+	shared ulong delay;
+	shared uint taskId;
+	shared bool repeat = false;
+}
+
 class LoggerImpl : Logger {
 	private const string name;
 
