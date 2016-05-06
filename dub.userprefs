@@ -1,11 +1,14 @@
 ﻿<Properties StartupItem="dub.json">
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Default" PreferredExecutionTarget="cov" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="source/mcpid/server.d">
+  <MonoDevelop.Ide.Workbench ActiveDocument="dub.json">
     <Files>
-      <File FileName="source/app.d" Line="11" Column="2" />
-      <File FileName="source/mcpid/server.d" Line="100" Column="32" />
-      <File FileName="source/mcpid/util.d" Line="22" Column="10" />
-      <File FileName="source/mcpid/player.d" Line="30" Column="2" />
+      <File FileName="source\app.d" Line="1" Column="1" />
+      <File FileName="source\mcpid\server.d" Line="1" Column="1" />
+      <File FileName="source\mcpid\util.d" Line="1" Column="1" />
+      <File FileName="source\mcpid\player.d" Line="1" Column="1" />
+      <File FileName="source\mcpid\net\login.d" Line="4" Column="31" />
+      <File FileName="source\mcpid\net\mcpacket.d" Line="13" Column="19" />
+      <File FileName="dub.json" Line="10" Column="24" />
     </Files>
   </MonoDevelop.Ide.Workbench>
   <MonoDevelop.Ide.DebuggingService.Breakpoints>

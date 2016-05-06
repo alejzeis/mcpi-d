@@ -22,6 +22,9 @@ class Player {
 		import std.format;
 		server.getLogger().logDebug("Got packet: " ~ format("%02X", data[0]));
 		switch(cast(ubyte) data[0]) {
+			case 0x82:
+
+				break;
 			default:
 				break;
 		}

@@ -18,7 +18,7 @@ import std.concurrency;
 immutable string SOFTWARE = "mcpi-d";
 immutable string SOFTWARE_VERSION = "1.0.0-alpha";
 immutable string MCPI_VERSION = "0.1.1";
-immutable uint MCPI_PROTOCOL = 14;
+immutable uint MCPI_PROTOCOL = 9;
 
 package class PlayersLock { }
 
@@ -43,8 +43,8 @@ class MinecraftPiServer {
 		playerLock = cast(shared) new PlayersLock();
 
 		shared ServerOptions options = ServerOptions();
-		//options.serverIdent = "MCCPP;MINECON;A mcpi-d server!";
-		options.serverIdent = "MCPE;A mcpi-d server!;" ~ to!string(MCPI_PROTOCOL) ~ ";" ~ MCPI_VERSION ~ "0;0";
+		options.serverIdent = "MCCPP;MINECON;A mcpi-d server!";
+		//options.serverIdent = "MCPE;A mcpi-d server!;" ~ to!string(MCPI_PROTOCOL) ~ ";" ~ MCPI_VERSION ~ "0;0";
 
 		rakTid = spawn(&startRakServer, cast(shared) new LoggerImpl("DRakLib"), bindIp, bindPort, options);
 		logger.logDebug("Started DRakLib thread");
