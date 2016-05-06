@@ -24,8 +24,10 @@ class Player {
 	}
 
 	shared void handlePacket(byte[] data) {
-		import std.format;
-		server.getLogger().logDebug("Got packet: " ~ format("%02X", data[0]));
+		debug {
+			import std.string;
+			server.getLogger().logDebug("Got packet: " ~ format("%02X", data[0]));
+		}
 		switch(cast(ubyte) data[0]) {
 			case LOGIN:
 				LoginPacket lp = new LoginPacket();
