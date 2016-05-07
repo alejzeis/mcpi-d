@@ -20,3 +20,5 @@ bin/*
 dub.userprefs
 docs.json
 __dummy.html
+
+.project

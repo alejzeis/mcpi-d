@@ -1,5 +1,18 @@
 ﻿module mcpid.net.network;
 
+import cerealed;
+
+byte[] encodeStruct(T)(T s) @safe {
+	auto c = Cerealizer();
+	c ~= s;
+	return cast(byte[]) c.bytes.dup; 
+}
+
+T decodeStruct(T)(ref byte[] data) @safe {
+	auto d = Decerealizer(data);
+	return d.value!T;
+}
+
 immutable ubyte LOGIN = 0x82;
 immutable ubyte LOGIN_STATUS = 0x83;
 immutable ubyte READY = 0x84;

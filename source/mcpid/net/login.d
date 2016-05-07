@@ -1,8 +1,5 @@
 ﻿module mcpid.net.login;
 
-import draklib.protocol.packet;
-import draklib.bytestream;
-
 import cerealed;
 
 import mcpid.net.network;
@@ -13,68 +10,37 @@ enum LoginStatus {
 	STATUS_CLIENT_OUTDATED = 2
 }
 
-struct LoginPacketS {
-	ushort usernameLen;
-	@ArrayLength("usernameLen") byte[] usernameBytes;
+struct LoginPacket {
+	ubyte pid = LOGIN;
+	string username; // Short prefix, then bytes
 	uint protocol1;
 	uint protocol2;
 }
 
-struct LoginStatusPacketS {
-	uint status;
-}
-
-class LoginPacket : Packet {
-	string username;
-	uint protocol1;
-	uint protocol2;
-
-	override {
-		protected void _encode(ref ByteStream stream) {
-			stream.writeStrUTF8(username);
-			stream.writeUInt(protocol1);
-			stream.writeUInt(protocol2);
-		}
-		
-		protected void _decode(ref ByteStream stream) {
-			username = stream.readStrUTF8();
-			protocol1 = stream.readUInt();
-			protocol2 = stream.readUInt();
-		}
-		
-		ubyte getID() {
-			return LOGIN; 
-		}
-		
-		uint getSize() {
-			return cast(uint) (11 + (cast(byte[]) username).length);
-		}
-	}
-}
-
-class LoginStatusPacket : Packet {
+struct LoginStatusPacket {
+	ubyte pid = LOGIN_STATUS;
 	uint status;
 	
-	override {
-		protected void _encode(ref ByteStream stream) {
-			stream.writeUInt(status);
+	/*
+	import std.stdio;
+	void accept(C)(auto ref C cereal) {
+		if(typeid(cereal) == typeid(Cerealiser)) {
+			writeln("Cerealizer");
 		}
-		
-		protected void _decode(ref ByteStream stream) {
-			status = stream.readUInt();
-		}
-		
-		ubyte getID() {
-			return LOGIN_STATUS;
-		}
-		
-		uint getSize() {
-			return 5;
+		if(typeid(cereal) == typeid(Decerealiser)) {
+			writeln("Decerealizer");
 		}
 	}
+	*/
 }
 
-class StartGamePacket : Packet {
+struct ReadyPacket {
+	ubyte pid = READY;
+	ubyte status;
+}
+
+struct StartGamePacket {
+	ubyte pid = START_GAME;
 	uint seed;
 	uint unknown;
 	uint gamemode;
@@ -82,26 +48,4 @@ class StartGamePacket : Packet {
 	float x;
 	float y;
 	float z;
-
-	override {
-		protected void _encode(ref ByteStream stream) {
-			stream.writeUInt(seed);
-			stream.writeUInt(unknown);
-			stream.writeUInt(gamemode);
-			stream.writeUInt(entityId);
-
-		}
-		
-		protected void _decode(ref ByteStream stream) {
-
-		}
-		
-		ubyte getID() {
-			return LOGIN_STATUS;
-		}
-		
-		uint getSize() {
-			return 5;
-		}
-	}
 }

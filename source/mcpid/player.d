@@ -2,10 +2,9 @@
 
 import mcpid.net.network;
 import mcpid.net.login;
+import mcpid.net.entity;
 import mcpid.server;
 import mcpid.util;
-
-import draklib.protocol.packet;
 
 import cerealed;
 
@@ -20,6 +19,7 @@ class Player {
 
 	private shared string username;
 	private shared uint entityId;
+	private shared bool loggedIn = false;
 
 	this(shared MinecraftPiServer server, shared string ip, shared ushort port) {
 		this.server = server;
@@ -27,32 +27,17 @@ class Player {
 		this.port = port;
 	}
 
-	shared void sendPacket(Packet packet) {
-		byte[] data;
-		packet.encode(data);
-
-		server.sendPacket(ip, port, cast(shared) data);
-	}
-
-	shared void sendPacketS(T)(T value) {
-		auto cerealizer = Cerealizer();
-		cerealizer ~= value;
-
-		server.sendPacket(ip, port, cast(shared byte[]) cerealizer.bytes.dup);
+	shared void sendPacket(shared byte[] data) {
+		server.sendPacket(ip, port, data);
 	}
 
 	shared void handlePacket(byte[] data) {
-		debug {
-			import std.string;
-			server.getLogger().logDebug("Got packet: " ~ format("%02X", data[0]));
-		}
 		switch(cast(ubyte) data[0]) {
 			case LOGIN:
-				LoginPacket lp = new LoginPacket();
-				lp.decode(data);
+				if(loggedIn) return;
+				LoginPacket lp = decodeStruct!LoginPacket(data);
 
-				//LoginStatusPacket lsp = new LoginStatusPacket();
-				LoginStatusPacketS lsp = LoginStatusPacketS();
+				LoginStatusPacket lsp = LoginStatusPacket();
 				if(lp.protocol1 != MCPI_PROTOCOL || lp.protocol2 != MCPI_PROTOCOL) {
 					server.getLogger().logDebug("Disconnecting " ~ lp.username ~": invalid protocol(s): " ~ to!string(lp.protocol1) ~ ", " ~ to!string(lp.protocol2));
 
@@ -62,8 +47,7 @@ class Player {
 						lsp.status = LoginStatus.STATUS_CLIENT_OUTDATED;
 					}
 
-					//sendPacket(lsp);
-					sendPacketS(lsp);
+					sendPacket(cast(shared) encodeStruct(lsp));
 					close("Invalid protocol(s): " ~ to!string(lp.protocol1) ~ ", " ~ to!string(lp.protocol2));
 					return;
 				}
@@ -71,10 +55,32 @@ class Player {
 				entityId = cast(shared) server.nextEntityId++;
 
 				server.getLogger().logInfo(username ~ " logged in with entity Id: " ~ to!string(entityId));
+				loggedIn = true;
 
 				lsp.status = LoginStatus.STATUS_OK;
-				//sendPacket(lsp);
-				sendPacketS(lsp);
+				sendPacket(cast(shared) encodeStruct(lsp));
+				
+				StartGamePacket sgp = StartGamePacket();
+				sgp.seed = 123456; //Random seed
+				sgp.unknown = 0;
+				sgp.gamemode = 1;
+				//sgp.entityId = entityId;
+				sgp.entityId = 1;
+				sgp.x = 64f;
+				sgp.y = 64f;
+				sgp.z = 64f;
+				sendPacket(cast(shared) encodeStruct(sgp));
+				break;
+			case READY:
+				AddPlayerPacket app = AddPlayerPacket();
+				app.clientID = 0;
+				app.entityId = 0;
+				app.username = "ameme";
+				app.x = 69f;
+				app.y = 64f;
+				app.z = 69f;
+				server.getLogger().logDebug(username ~ " has spawned.");
+				//sendPacket(cast(shared) encodeStruct(app));
 				break;
 			default:
 				break;
