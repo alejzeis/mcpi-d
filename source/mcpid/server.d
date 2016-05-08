@@ -30,8 +30,8 @@ class MinecraftPiServer {
 	private shared bool crashed = false;
 	private const Logger logger;
 
-	private shared Player[string] players;
-	private shared Lock playerLock;
+	package shared Player[string] players;
+	package shared Lock playerLock;
 
 	private shared ulong currentTick = 0;
 	private shared uint nextTaskId = 0;
@@ -133,6 +133,14 @@ class MinecraftPiServer {
 		synchronized(tasksLock) {
 			uint id = nextTaskId++;
 			tasks[id] = Task(func, currentTick, interval, id, true);
+		}
+	}
+	
+	public shared void broadcastMessage(string message) {
+		synchronized (playerLock) {
+			foreach (player; players) {
+				player.sendMessage(message);
+			}
 		}
 	}
 

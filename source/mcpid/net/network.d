@@ -2,6 +2,10 @@
 
 import cerealed;
 
+import draklib.bytestream;
+
+import std.system;
+
 byte[] encodeStruct(T)(T s) @safe {
 	auto c = Cerealizer();
 	c ~= s;
@@ -11,6 +15,45 @@ byte[] encodeStruct(T)(T s) @safe {
 T decodeStruct(T)(ref byte[] data) @safe {
 	auto d = Decerealizer(data);
 	return d.value!T;
+}
+
+byte[] writeMetadataEntry(ubyte bottom, Metadata!byte meta) @trusted {
+	ByteStream bs = ByteStream.alloc(2, Endian.littleEndian);
+	bs.writeUByte(cast(ubyte) ((meta.type << 5) & (0xE0 | bottom)));
+	bs.writeByte(meta.val);
+	return bs.getBuffer().dup;
+}
+
+byte[] writeMetadataEntry(ubyte bottom, Metadata!short meta) @trusted {
+	ByteStream bs = ByteStream.alloc(3, Endian.littleEndian);
+	bs.writeUByte(cast(ubyte) ((meta.type << 5) & (0xE0 | bottom)));
+	bs.writeShort(meta.val);
+	return bs.getBuffer().dup;
+}
+
+byte[] writeMetadataEntry(ubyte bottom, Metadata!(int[]) meta) {
+	ByteStream bs = ByteStream.alloc(cast(uint) (1 + (4 * meta.val.length)), Endian.littleEndian);
+	bs.writeUByte(cast(ubyte) ((meta.type << 5) & (0xE0 | bottom)));
+	foreach(val; meta.val) {
+		bs.writeInt(val);
+	}
+	return bs.getBuffer().dup;
+}
+
+struct Metadata(T) {
+	ubyte type;
+	T val;
+}
+
+enum MetadataType {
+	BYTE = 0,
+	SHORT = 1,
+	INT = 2,
+	FLOAT = 3,
+	STRING = 4,
+	UNKNOWN1 = 5, //Not sure about this one
+	INT_ARRAY = 6
+	
 }
 
 immutable ubyte LOGIN = 0x82;

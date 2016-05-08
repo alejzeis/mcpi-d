@@ -3,25 +3,29 @@
 import mcpid.net.network;
 import mcpid.net.login;
 import mcpid.net.entity;
+import mcpid.net.world;
+import mcpid.world.entity;
 import mcpid.server;
 import mcpid.util;
+
+import draklib.bytestream;
 
 import cerealed;
 
 import std.conv;
 
 /// Represents a Player on the server
-class Player {
+class Player : Entity {
 	private shared string ip;
 	private shared ushort port;
 
 	private shared MinecraftPiServer server;
 
 	private shared string username;
-	private shared uint entityId;
 	private shared bool loggedIn = false;
 
 	this(shared MinecraftPiServer server, shared string ip, shared ushort port) {
+		super(64f, 64f, 64f);
 		this.server = server;
 		this.ip = ip;
 		this.port = port;
@@ -64,31 +68,56 @@ class Player {
 				sgp.seed = 123456; //Random seed
 				sgp.unknown = 0;
 				sgp.gamemode = 1;
-				//sgp.entityId = entityId;
-				sgp.entityId = 1;
-				sgp.x = 64f;
-				sgp.y = 64f;
-				sgp.z = 64f;
+				sgp.entityId = entityId;
+				sgp.x = this.x;
+				sgp.y = this.y;
+				sgp.z = this.z;
 				sendPacket(cast(shared) encodeStruct(sgp));
 				break;
 			case READY:
-				AddPlayerPacket app = AddPlayerPacket();
-				app.clientID = 0;
-				app.entityId = 0;
-				app.username = "ameme";
-				app.x = 69f;
-				app.y = 64f;
-				app.z = 69f;
-				server.getLogger().logDebug(username ~ " has spawned.");
-				//sendPacket(cast(shared) encodeStruct(app));
+				sendMessage("This server is running " ~ SOFTWARE ~ " " ~ SOFTWARE_VERSION);
+				AdventureSettingsPacket asp = AdventureSettingsPacket();
+				asp.flags = 0;
+				asp.flags |= 0x20; //nametags
+				sendPacket(cast(shared) encodeStruct(asp));
+			
+				SetEntityDataPacket sedp = SetEntityDataPacket();
+				sedp.entityId = entityId;
+				sedp.metadata = getMetadata();
+				sendPacket(cast(shared) encodeStruct(sedp));
+				
+				spawned = true;
+				synchronized (server.playerLock) {
+					foreach (player; server.players) { //TODO: parallel?
+						if(player.getUsername() == username) continue;
+						player.spawnTo(this);
+						spawnTo(player);
+					}	
+				}
 				break;
 			default:
 				break;
 		}
 	}
+	
+	shared void sendMessage(string message) {
+		ChatPacket cp = ChatPacket();
+		cp.message = message;
+		sendPacket(cast(shared) encodeStruct(cp));
+	}
 
 	shared void close(in string reason, in bool notify = true) {
-		if(notify) server.getLogger().logInfo(username ~ " [" ~ getIdent(ip, port) ~ "] disconnected: " ~ reason);
-		//TODO: broadcast chat
+		if(notify) {
+			server.getLogger().logInfo(username ~ " [" ~ getIdent(ip, port) ~ "] disconnected: " ~ reason);
+			server.broadcastMessage(username ~ " has disconnected from the server.");
+		}
+	}
+	
+	shared string getUsername() {
+		return username;
+	}
+	
+	shared bool isLoggedIn() {
+		return loggedIn;
 	}
 }

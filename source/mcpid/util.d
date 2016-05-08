@@ -6,7 +6,7 @@ import std.conv;
 import std.stdio;
 import std.datetime;
 
-string getIdent(in string ip, in ushort port) {
+string getIdent(in string ip, in ushort port) @safe {
 	return ip ~ ":" ~ to!string(port);
 }
 

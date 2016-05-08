@@ -4,6 +4,19 @@ import cerealed;
 
 import mcpid.net.network;
 
+struct SetEntityDataPacket {
+	ubyte pid = SET_ENTITY_DATA;
+	uint entityId;
+	@RestOfPacket byte[] metadata;
+}
+
+struct PlayerEquipmentPacket {
+	ubyte pid = PLAYER_EQUIPMENT;
+	uint entityId;
+	short block;
+	short meta;
+}
+
 struct AddPlayerPacket {
 	ubyte pid = ADD_PLAYER;
 	ulong clientID;
@@ -12,6 +25,5 @@ struct AddPlayerPacket {
 	float x;
 	float y;
 	float z;
-	ubyte end = 0x7F;
-	@NoCereal byte[] metadata;
+	@RestOfPacket byte[] metadata;
 }
