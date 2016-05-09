@@ -4,12 +4,6 @@ import cerealed;
 
 import mcpid.net.network;
 
-struct SetEntityDataPacket {
-	ubyte pid = SET_ENTITY_DATA;
-	uint entityId;
-	@RestOfPacket byte[] metadata;
-}
-
 struct PlayerEquipmentPacket {
 	ubyte pid = PLAYER_EQUIPMENT;
 	uint entityId;
@@ -28,10 +22,6 @@ struct AddPlayerPacket {
 	@RestOfPacket byte[] metadata;
 }
 
-struct RemoveEntityPacket {
-	ubyte pid = REMOVE_ENTITY;
-	uint entityId;
-}
 
 struct MovePlayerPacket {
 	ubyte pid = MOVE_PLAYER;
@@ -41,4 +31,34 @@ struct MovePlayerPacket {
 	float z;
 	float yaw;
 	float pitch;
+}
+
+struct AnimatePacket {
+	byte action;
+	uint entityId;
+}
+
+struct UseItemPacket {
+	ubyte pid = USE_ITEM;
+	int x;
+	int y;
+	int z;
+	int face;
+	short block;
+	byte meta;
+	uint entityId;
+	float fx;
+	float fy;
+	float fz;
+}
+
+struct RemoveEntityPacket {
+	ubyte pid = REMOVE_ENTITY;
+	uint entityId;
+}
+
+struct SetEntityDataPacket {
+	ubyte pid = SET_ENTITY_DATA;
+	uint entityId;
+	@RestOfPacket byte[] metadata;
 }

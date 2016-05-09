@@ -108,7 +108,7 @@ class Player : Entity {
 				//server.getLogger().logDebug("X: " ~ to!string(x) ~ ", Y: " ~ to!string(y) ~ ", Z: " ~ to!string(z));
 				
 				mpp.entityId = entityId;
-				server.broadcastPacket(this, cast(shared) encodeStruct(mpp));
+				server.broadcastPacket(this, cast(shared) encodeStruct(mpp), true);
 				break;
 			case PLAYER_EQUIPMENT:
 				PlayerEquipmentPacket pep = decodeStruct!PlayerEquipmentPacket(data);
@@ -116,7 +116,7 @@ class Player : Entity {
 				this.itemMeta = pep.meta;
 				
 				pep.entityId = entityId;
-				server.broadcastPacket(this, cast(shared) encodeStruct(pep));
+				server.broadcastPacket(this, cast(shared) encodeStruct(pep), true);
 				break;
 			default:
 				debug(unknownPackets) {

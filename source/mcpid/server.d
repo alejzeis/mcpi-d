@@ -28,7 +28,7 @@ class MinecraftPiServer {
 	private shared ushort bindPort;
 	private shared bool running = false;
 	private shared bool crashed = false;
-	private const Logger logger;
+	private shared const Logger logger;
 
 	package shared Player[string] players;
 	package shared Lock playerLock;
@@ -46,7 +46,7 @@ class MinecraftPiServer {
 		this.bindIp = bindIp;
 		this.bindPort = bindPort;
 
-		logger = new LoggerImpl("MCPI-d");
+		logger = cast(shared) new LoggerImpl("MCPI-d");
 
 		playerLock = cast(shared) new Lock();
 		tasksLock = cast(shared) new Lock();
@@ -56,7 +56,7 @@ class MinecraftPiServer {
 		//options.serverIdent = "MCPE;A mcpi-d server!;" ~ to!string(MCPI_PROTOCOL) ~ ";" ~ MCPI_VERSION ~ "0;0";
 
 		rakTid = cast(shared) spawn(&startRakServer, cast(shared) new LoggerImpl("DRakLib"), bindIp, bindPort, options);
-		logger.logDebug("Started DRakLib thread");
+		(cast(Logger) logger).logDebug("Started DRakLib thread");
 	}
 
 	void start() {
@@ -71,7 +71,7 @@ class MinecraftPiServer {
 	}
 
 	private void run() {
-		logger.logInfo("Starting " ~ SOFTWARE ~ " " ~ SOFTWARE_VERSION ~ " implementing MCPI " ~ MCPI_VERSION ~ " (protocol: " ~ to!string(MCPI_PROTOCOL) ~ ")");
+		(cast(Logger) logger).logInfo("Starting " ~ SOFTWARE ~ " " ~ SOFTWARE_VERSION ~ " implementing MCPI " ~ MCPI_VERSION ~ " (protocol: " ~ to!string(MCPI_PROTOCOL) ~ ")");
 
 		(cast(shared) this).registerRepeatingTask(() {
 				int max = 450;
@@ -81,7 +81,11 @@ class MinecraftPiServer {
 			}, 1);
 		
 		setMaxMailboxSize(cast(Tid) rakTid, 256, function bool (Tid tid) {
-				throw new Exception("Reached max mailbox size of 256! (Please report this error!)");
+				throw new Exception("(RakTid) Reached max mailbox size of 256! (Please report this error!)");
+		});
+		
+		setMaxMailboxSize(thisTid(), 256, function bool (Tid tid) {
+				throw new Exception("(thisTid) Reached max mailbox size of 256! (Please report this error!)");
 		});
 		
 		StopWatch sw = StopWatch();
@@ -91,25 +95,25 @@ class MinecraftPiServer {
 			try {
 				doTick();
 			} catch(Exception e) {
-				logger.logError("Exception while ticking!");
-				logger.logTrace(e.toString());
+				(cast(Logger) logger).logError("Exception while ticking!");
+				(cast(Logger) logger).logTrace(e.toString());
 				running = false;
 				crashed = true;
 				break;
 			}
 			sw.stop();
 			if(sw.peek().msecs > 50) { //20 TPS, 1000ms (1 second) / 20 = 50ms
-				logger.logWarn("Can't keep up! Did the system time change or is the server overloaded? (took " ~ to!string(sw.peek().msecs) ~ "ms)");
+				(cast(Logger) logger).logWarn("Can't keep up! Did the system time change or is the server overloaded? (took " ~ to!string(sw.peek().msecs) ~ "ms)");
 			} else {
 				Thread.sleep(dur!("msecs")(50 - sw.peek().msecs));
 			}
 		}
-		if(crashed) logger.logError("The server has crashed!");
-		logger.logInfo("Halting...");
+		if(crashed) (cast(Logger) logger).logError("The server has crashed!");
+		(cast(Logger) logger).logInfo("Halting...");
 
 		shutdownNetwork();
 
-		logger.logInfo("Done");
+		(cast(Logger) logger).logInfo("Done");
 	}
 
 	private void doTick() {
@@ -150,16 +154,20 @@ class MinecraftPiServer {
 				player.sendMessage(message);
 			}
 		}
+		(cast(Logger) logger).logInfo("[CHAT]: " ~ message);
 	}
 
 	package shared void sendPacket(shared string ip, shared ushort port, shared byte[] data, shared bool immediate = false, shared ubyte reliability = Reliability.RELIABLE) {
 		send(cast(Tid) rakTid, SendPacketMessage(ip, port, immediate, reliability, data));
 	}
 	
-	package shared void broadcastPacket(shared Player playerFrom, shared byte[] data) {
-		foreach(player; players) {
-			if(player.getUsername() == playerFrom.getUsername()) continue;
-			player.sendPacket(data);
+	package shared void broadcastPacket(shared Player playerFrom, shared byte[] data, shared bool onlyIfSpawned = false) {
+		synchronized (playerLock) {
+			foreach(player; players) {
+				if(player.getUsername() == playerFrom.getUsername()) continue;
+				if(player.hasSpawned() && onlyIfSpawned)
+					player.sendPacket(data);
+			}
 		}
 	}
 
@@ -169,7 +177,7 @@ class MinecraftPiServer {
 
 			if(ident in players) return;
 
-			logger.logDebug("Session opened from: " ~ ident);
+			(cast(Logger) logger).logDebug("Session opened from: " ~ ident);
 			players[ident] = cast(shared) new Player(cast(shared) this, m.ip, m.port);
 		}
 
@@ -177,7 +185,7 @@ class MinecraftPiServer {
 
 	private void handleSessionClose(SessionCloseMessage m) {
 		string ident = getIdent(m.ip, m.port);
-		logger.logDebug("Session closed from: " ~ ident);
+		(cast(Logger) logger).logDebug("Session closed from: " ~ ident);
 		synchronized (playerLock) {
 			if(!(ident in players)) return;
 
@@ -197,15 +205,15 @@ class MinecraftPiServer {
 
 	private void shutdownNetwork() {
 		//TODO: Kick players
-		logger.logInfo("Stopping RakNet Server...");
+		(cast(Logger) logger).logInfo("Stopping RakNet Server...");
 		send(cast(Tid) rakTid, StopServerMessage()); //Stop DRakLib
 
 		bool stopped = false;
 		receiveTimeout(dur!("seconds")(5), (ServerStoppedMessage m) {
-				logger.logDebug("RakNet Server stopped.");
+				(cast(Logger) logger).logDebug("RakNet Server stopped.");
 				stopped = true;
 			});
-		if(!stopped) logger.logWarn("Could not stop RakNet server, continuing shutdown...");
+		if(!stopped) (cast(Logger) logger).logWarn("Could not stop RakNet server, continuing shutdown...");
 	}
 
 	shared bool hasCrashed() {

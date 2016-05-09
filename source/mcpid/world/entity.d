@@ -42,7 +42,7 @@ class Entity {
 		return bs.getBuffer()[0..bs.getPosition()].dup;
 	}
 	
-	public shared void spawnTo(shared Player player) {
+	shared void spawnTo(shared Player player) {
 		if(typeid(this) == typeid(Player)) {
 			AddPlayerPacket app = AddPlayerPacket();
 			import std.random;
@@ -68,7 +68,7 @@ class Entity {
 		}
 	}
 	
-	public shared void despawnFrom(shared Player player) {
+	shared void despawnFrom(shared Player player) {
 		RemoveEntityPacket rep = RemoveEntityPacket();
 		rep.entityId = entityId;
 		debug {
@@ -76,5 +76,13 @@ class Entity {
 			writeln("despawning ", entityId, " to ", player.entityId);
 		}
 		player.sendPacket(cast(shared) encodeStruct(rep));
+	}
+	
+	shared bool hasSpawned() {
+		return spawned;
+	}
+	
+	bool hasSpawned_noShare() {
+		return cast(bool) spawned;
 	}
 }
