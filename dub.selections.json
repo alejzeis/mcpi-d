@@ -1,8 +1,8 @@
 {
-	"fileVersion": 1,
 	"versions": {
-		"draklib": "1.0.2",
+		"draklib": "~master",
 		"cerealed": "0.6.4",
 		"unit-threaded": "0.6.11"
-	}
+	},
+	"fileVersion": 1
 }

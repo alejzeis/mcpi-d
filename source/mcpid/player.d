@@ -75,6 +75,7 @@ class Player : Entity {
 				sendPacket(cast(shared) encodeStruct(sgp));
 				break;
 			case READY:
+				if(spawned) break;
 				sendMessage("This server is running " ~ SOFTWARE ~ " " ~ SOFTWARE_VERSION);
 				AdventureSettingsPacket asp = AdventureSettingsPacket();
 				asp.flags = 0;
@@ -92,10 +93,36 @@ class Player : Entity {
 						if(player.getUsername() == username) continue;
 						player.spawnTo(this);
 						spawnTo(player);
-					}	
+					}
 				}
 				break;
+			case MOVE_PLAYER:
+				if(!spawned) break;
+				MovePlayerPacket mpp = decodeStruct!MovePlayerPacket(data);
+				this.x = mpp.x;
+				this.y = mpp.y;
+				this.z = mpp.z;
+				this.yaw = mpp.yaw;
+				this.pitch = mpp.pitch;
+				
+				//server.getLogger().logDebug("X: " ~ to!string(x) ~ ", Y: " ~ to!string(y) ~ ", Z: " ~ to!string(z));
+				
+				mpp.entityId = entityId;
+				server.broadcastPacket(this, cast(shared) encodeStruct(mpp));
+				break;
+			case PLAYER_EQUIPMENT:
+				PlayerEquipmentPacket pep = decodeStruct!PlayerEquipmentPacket(data);
+				this.item = pep.block;
+				this.itemMeta = pep.meta;
+				
+				pep.entityId = entityId;
+				server.broadcastPacket(this, cast(shared) encodeStruct(pep));
+				break;
 			default:
+				debug(unknownPackets) {
+					import std.string;
+					server.getLogger().logDebug("Unknown Packet: 0x" ~ format("%02X", data[0]));
+				}
 				break;
 		}
 	}
@@ -110,6 +137,13 @@ class Player : Entity {
 		if(notify) {
 			server.getLogger().logInfo(username ~ " [" ~ getIdent(ip, port) ~ "] disconnected: " ~ reason);
 			server.broadcastMessage(username ~ " has disconnected from the server.");
+		}
+		
+		synchronized (server.playerLock) {
+			foreach (player; server.players) { //TODO: parallel?
+				if(player.getUsername() == username) continue;
+				despawnFrom(player);
+			}
 		}
 	}
 	

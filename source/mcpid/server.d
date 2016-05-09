@@ -74,8 +74,16 @@ class MinecraftPiServer {
 		logger.logInfo("Starting " ~ SOFTWARE ~ " " ~ SOFTWARE_VERSION ~ " implementing MCPI " ~ MCPI_VERSION ~ " (protocol: " ~ to!string(MCPI_PROTOCOL) ~ ")");
 
 		(cast(shared) this).registerRepeatingTask(() {
-				receiveTimeout(dur!("msecs")(1), &this.handleSessionOpen, &this.handleSessionClose, &this.handleSessionPacket);
+				int max = 450;
+				while(max-- > 0 && receiveTimeout(dur!("msecs")(0), &this.handleSessionOpen, &this.handleSessionClose, &this.handleSessionPacket)) {
+					
+				} 
 			}, 1);
+		
+		setMaxMailboxSize(cast(Tid) rakTid, 256, function bool (Tid tid) {
+				throw new Exception("Reached max mailbox size of 256! (Please report this error!)");
+		});
+		
 		StopWatch sw = StopWatch();
 		while(running) {
 			sw.reset();
@@ -147,6 +155,13 @@ class MinecraftPiServer {
 	package shared void sendPacket(shared string ip, shared ushort port, shared byte[] data, shared bool immediate = false, shared ubyte reliability = Reliability.RELIABLE) {
 		send(cast(Tid) rakTid, SendPacketMessage(ip, port, immediate, reliability, data));
 	}
+	
+	package shared void broadcastPacket(shared Player playerFrom, shared byte[] data) {
+		foreach(player; players) {
+			if(player.getUsername() == playerFrom.getUsername()) continue;
+			player.sendPacket(data);
+		}
+	}
 
 	private void handleSessionOpen(SessionOpenMessage m) {
 		synchronized (playerLock) {
@@ -173,11 +188,11 @@ class MinecraftPiServer {
 
 	private void handleSessionPacket(SessionReceivePacketMessage m) {
 		string ident = getIdent(m.ip, m.port);
-		synchronized(playerLock) {
+		//synchronized(playerLock) {
 			if(ident in players) {
 				players[ident].handlePacket(cast(byte[]) m.payload);
 			}
-		}
+		//}
 	}
 
 	private void shutdownNetwork() {

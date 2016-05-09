@@ -27,3 +27,18 @@ struct AddPlayerPacket {
 	float z;
 	@RestOfPacket byte[] metadata;
 }
+
+struct RemoveEntityPacket {
+	ubyte pid = REMOVE_ENTITY;
+	uint entityId;
+}
+
+struct MovePlayerPacket {
+	ubyte pid = MOVE_PLAYER;
+	uint entityId;
+	float x;
+	float y;
+	float z;
+	float yaw;
+	float pitch;
+}
